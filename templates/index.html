@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<p>Hello <strong>world</strong><p>
+<h2>Messages</h2>
+<div id="messages"></div>
+
+<script>
+	function registerStreamListener() {
+		const targetContainer = document.getElementById("messages");
+		console.log(targetContainer);
+		var eventSource = new EventSource("/stream");
+		eventSource.addEventListener('message', function(e) {
+			console.log(e);
+		    targetContainer.innerHTML = e.data;
+		    if (e.data > 20) {
+		        targetContainer.style.color = "red";
+		    }
+		});
+	}
+	window.addEventListener('load', registerStreamListener);
+</script>
+{% endblock %}
