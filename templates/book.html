@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h2>Book</h2>
+<div id="page"></div>
+
+<p><button id="previous-page-button">Previous Page</button> <button id="next-page-button">Next Page</button></p>
+
+<script>
+
+	function registerStreamListener() {
+		const targetContainer = document.getElementById("page");
+		console.log(targetContainer);
+		var eventSource = new EventSource("/book/stream");
+		eventSource.addEventListener('message', function(e) {
+			console.log(e);
+		   	const {page_number, page_text } = JSON.parse(e.data);
+
+		   	console.log(page_number, page_text);
+
+		   	targetContainer.innerHTML = `${page_text}\nPage: ${page_number}`;
+		});
+	}
+
+	window.addEventListener('load', registerStreamListener);
+
+	function nextPageListener() {
+		console.log('Next page');
+		fetch('/book/pages/next');
+
+	}
+
+	function previousPageListener() {
+		fetch('/book/pages/previous');
+
+	}
+
+	const nextButton = document.getElementById('next-page-button');
+	nextButton.addEventListener('click', nextPageListener);
+
+	const previousButton = document.getElementById('previous-page-button');
+	previousButton.addEventListener('click', previousPageListener);
+</script>
+{% endblock %}

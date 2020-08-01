@@ -1,3 +1,4 @@
+import json
 import random
 import threading
 
@@ -30,4 +31,61 @@ def create_messages():
 		messages.append(str(random.randint(1,20)))
 	threading.Timer(WAIT_SECONDS, create_messages).start()
 
-create_messages()
+#create_messages()
+
+next_page = 0
+
+book = (
+	{
+		"page_number": 1,
+		"page_text": 'The beginning'
+	},
+	{
+		"page_number": 2,
+		"page_text": 'The middle'
+	},
+	{
+		"page_number": 3,
+		"page_text": 'The end'
+	},
+)
+
+@app.route('/book')
+def display_book():
+	return flask.render_template('book.html')
+
+
+@app.route('/book/stream')
+def book_stream():
+
+	def event_stream():
+		global next_page
+		current_page = -1
+		print(next_page, current_page)
+		while True:
+			if next_page != current_page:
+				current_page = next_page
+				yield f"data: {json.dumps(book[current_page])}\n\n" 
+
+	return flask.Response(event_stream(), mimetype="text/event-stream")
+
+@app.route('/book/pages/next')
+def turn_next_page():
+	global next_page
+	if next_page < len(book) - 1:
+		next_page = next_page + 1
+	else:
+		next_page = 0
+
+	return flask.jsonify({"next_page": next_page})
+
+
+@app.route('/book/pages/previous')
+def turn_previous_page():
+	global next_page
+	if next_page - 1 >= 0:
+		next_page = next_page - 1
+	else:
+		next_page = len(book) - 1
+
+	return flask.jsonify({"next_page": next_page})
