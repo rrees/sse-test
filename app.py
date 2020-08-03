@@ -36,8 +36,6 @@ def create_messages():
 
 event_queue = queue.Queue()
 
-next_page = 0
-
 book = (
 	{
 		"page_number": 1,
