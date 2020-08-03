@@ -1,4 +1,5 @@
 import json
+import queue
 import random
 import threading
 
@@ -33,6 +34,8 @@ def create_messages():
 
 #create_messages()
 
+event_queue = queue.Queue()
+
 next_page = 0
 
 book = (
@@ -61,31 +64,35 @@ def book_stream():
 	def event_stream():
 		global next_page
 		current_page = -1
-		print(next_page, current_page)
+		event_queue.put('next')
 		while True:
-			if next_page != current_page:
-				current_page = next_page
-				yield f"data: {json.dumps(book[current_page])}\n\n" 
+			event = event_queue.get()
+			print(event)
+			if event == 'next':
+				if current_page < len(book) - 1:
+					current_page = current_page + 1
+				else:
+					current_page = 0
+
+			if event == 'previous':
+				if current_page < 1:
+					current_page = len(book) - 1
+				else:
+					current_page = current_page - 1
+
+			yield f"data: {json.dumps(book[current_page])}\n\n" 
 
 	return flask.Response(event_stream(), mimetype="text/event-stream")
 
 @app.route('/book/pages/next')
 def turn_next_page():
-	global next_page
-	if next_page < len(book) - 1:
-		next_page = next_page + 1
-	else:
-		next_page = 0
+	event_queue.put('next')
 
-	return flask.jsonify({"next_page": next_page})
+	return flask.jsonify({})
 
 
 @app.route('/book/pages/previous')
 def turn_previous_page():
-	global next_page
-	if next_page - 1 >= 0:
-		next_page = next_page - 1
-	else:
-		next_page = len(book) - 1
+	event_queue.put('previous')
 
-	return flask.jsonify({"next_page": next_page})
+	return flask.jsonify({})
