@@ -55,17 +55,21 @@ book = (
 def display_book():
 	return flask.render_template('book.html')
 
+current_page = -1
+event_queue.put('next')
 
 @app.route('/book/stream')
 def book_stream():
 
+
 	def event_stream():
-		global next_page
-		current_page = -1
-		event_queue.put('next')
+		global current_page
 		while True:
-			event = event_queue.get()
-			print(event)
+			try:
+				event = event_queue.get(timeout=1)
+			except queue.Empty:
+				event = None
+			print(event, current_page)
 			if event == 'next':
 				if current_page < len(book) - 1:
 					current_page = current_page + 1
