@@ -34,7 +34,10 @@ def create_messages():
 
 #create_messages()
 
-event_queue = queue.Queue()
+current_page = 0
+
+subscribers = []
+
 
 book = (
 	{
@@ -55,46 +58,53 @@ book = (
 def display_book():
 	return flask.render_template('book.html')
 
-current_page = -1
-event_queue.put('next')
-
 @app.route('/book/stream')
 def book_stream():
 
-
 	def event_stream():
-		global current_page
+		a_subscriber = queue.Queue()
+		subscribers.append(a_subscriber)
+		a_subscriber.put(current_page)
 		while True:
-			try:
-				event = event_queue.get(timeout=1)
-			except queue.Empty:
-				event = None
-			print(event, current_page)
-			if event == 'next':
-				if current_page < len(book) - 1:
-					current_page = current_page + 1
-				else:
-					current_page = 0
+			page = a_subscriber.get()
 
-			if event == 'previous':
-				if current_page < 1:
-					current_page = len(book) - 1
-				else:
-					current_page = current_page - 1
+			print(page)
 
-			yield f"data: {json.dumps(book[current_page])}\n\n" 
+			yield f"data: {json.dumps(book[page])}\n\n" 
 
 	return flask.Response(event_stream(), mimetype="text/event-stream")
 
+def next_page_in_sequence(current_page, direction):
+	if direction == 'next':
+		if current_page < len(book) - 1:
+			return current_page + 1
+		else:
+			return 0
+
+	if direction == 'previous':
+		if current_page < 1:
+			return len(book) - 1
+		else:
+			return current_page - 1
+
+	return current_page
+
+def notify_listeners(current_page):
+	for subscriber in subscribers:
+		subscriber.put(current_page)
+
 @app.route('/book/pages/next')
 def turn_next_page():
-	event_queue.put('next')
-
-	return flask.jsonify({})
+	global current_page
+	current_page = next_page_in_sequence(current_page, 'next')
+	notify_listeners(current_page)
+	return flask.jsonify({"new_page": current_page})
 
 
 @app.route('/book/pages/previous')
 def turn_previous_page():
-	event_queue.put('previous')
+	global current_page
+	current_page = next_page_in_sequence(current_page, 'previous')
+	notify_listeners(current_page)
 
-	return flask.jsonify({})
+	return flask.jsonify({"new_page": current_page})
